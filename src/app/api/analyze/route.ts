@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
-import type { AnalysisResult } from "@/lib/types";
+import type { AnalysisResult, AnalysisTopic } from "@/lib/types";
 
 const API_KEY = process.env.ANTHROPIC_API_KEY;
+
+const NOT_FOUND: AnalysisTopic = {
+  status: "not_found",
+  summary: "Not found in the provided document.",
+  key_details: [],
+  concern: false,
+  concern_note: "",
+};
 
 export async function POST(req: Request) {
   if (!API_KEY) {
@@ -12,24 +20,46 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { text } = await req.json();
+    const { text, docNames } = await req.json();
 
     if (!text) {
-      return NextResponse.json(
-        { error: "No text provided" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "No text provided" }, { status: 400 });
     }
 
-    const prompt = `You are analyzing a Florida condominium Rules & Regulations document for a real estate buyer. Extract and summarize the following restrictions. Return your response as a JSON object with these fields (each a string or null if not found):
+    const prompt = `You are analyzing a Florida condominium disclosure document for a real estate buyer. Extract the following four topics and return a JSON object with exactly this structure:
 
 {
-  "rentalRestrictions": "Summary of rental restrictions (minimum lease terms, caps on number of rentals, waiting periods, etc.) or null",
-  "petRestrictions": "Summary of pet restrictions (size, breed, number limits, etc.) or null",
-  "firstRightOfRefusal": "Summary of first right of refusal / association approval rights, or null",
-  "incomeCreditRestrictions": "Summary of any income or credit restrictions on buyers, or null",
-  "rulesSummary": "2-3 sentence summary of the most important rules"
+  "rental": {
+    "status": "restricted" | "allowed" | "unclear" | "not_found",
+    "summary": "one sentence summary",
+    "key_details": ["detail 1", "detail 2"],
+    "concern": true | false,
+    "concern_note": "why it is a concern, or empty string"
+  },
+  "pet": {
+    "status": "restricted" | "allowed" | "unclear" | "not_found",
+    "summary": "one sentence summary",
+    "key_details": ["detail 1"],
+    "concern": true | false,
+    "concern_note": ""
+  },
+  "fror": {
+    "status": "restricted" | "allowed" | "unclear" | "not_found",
+    "summary": "one sentence summary about first right of refusal or association approval rights",
+    "key_details": [],
+    "concern": true | false,
+    "concern_note": ""
+  },
+  "income": {
+    "status": "restricted" | "allowed" | "unclear" | "not_found",
+    "summary": "one sentence summary about income or credit requirements for buyers",
+    "key_details": [],
+    "concern": true | false,
+    "concern_note": ""
+  }
 }
+
+Use "not_found" if the topic is not mentioned. Use "restricted" if there are clear restrictions. Use "allowed" if explicitly permitted with no restrictions. Use "unclear" if mentioned but ambiguous.
 
 Document text:
 ${text}
@@ -44,14 +74,9 @@ Return ONLY the JSON object, no other text.`;
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-3-5-sonnet-20241022",
+        model: "claude-sonnet-4-6",
         max_tokens: 1024,
-        messages: [
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
+        messages: [{ role: "user", content: prompt }],
       }),
     });
 
@@ -67,25 +92,20 @@ Return ONLY the JSON object, no other text.`;
     const data = await response.json();
     const content = data.content[0]?.text || "{}";
 
-    let parsed;
+    let parsed: Record<string, AnalysisTopic> = {};
     try {
       parsed = JSON.parse(content);
     } catch {
-      parsed = {
-        rentalRestrictions: null,
-        petRestrictions: null,
-        firstRightOfRefusal: null,
-        incomeCreditRestrictions: null,
-        rulesSummary: "Unable to parse analysis",
-      };
+      // leave parsed empty — fallback to NOT_FOUND below
     }
 
     const result: AnalysisResult = {
-      rentalRestrictions: parsed.rentalRestrictions || null,
-      petRestrictions: parsed.petRestrictions || null,
-      firstRightOfRefusal: parsed.firstRightOfRefusal || null,
-      income: parsed.incomeCreditRestrictions || null,
-      rulesSummary: parsed.rulesSummary || "No summary available",
+      rental: parsed.rental || NOT_FOUND,
+      pet: parsed.pet || NOT_FOUND,
+      fror: parsed.fror || NOT_FOUND,
+      income: parsed.income || NOT_FOUND,
+      generatedAt: new Date().toISOString(),
+      docNames: docNames || [],
     };
 
     return NextResponse.json(result);
