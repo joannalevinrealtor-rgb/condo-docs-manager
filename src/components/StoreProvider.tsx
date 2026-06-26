@@ -3,6 +3,9 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { Property } from "@/lib/types";
 import { loadProperties, saveProperty } from "@/lib/store";
+import { supabase } from "@/lib/supabaseClient";
+import { LoginScreen } from "./LoginScreen";
+import type { Session } from "@supabase/supabase-js";
 
 interface StoreCtx {
   loaded: boolean;
@@ -18,6 +21,23 @@ const Ctx = createContext<StoreCtx | null>(null);
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [authLoaded, setAuthLoaded] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthLoaded(true);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const refresh = useCallback(async () => {
     const list = await loadProperties();
@@ -26,8 +46,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    if (authLoaded && session) {
+      refresh();
+    }
+  }, [authLoaded, session, refresh]);
 
   const saveProp = useCallback(async (p: Property) => {
     await saveProperty(p);
@@ -39,6 +61,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
   }, []);
+
+  if (!authLoaded) {
+    return <div className="loading-screen">Initializing…</div>;
+  }
+
+  if (!session) {
+    return <LoginScreen />;
+  }
 
   return (
     <Ctx.Provider value={{ loaded, properties, saveProp, refresh }}>

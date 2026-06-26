@@ -227,3 +227,4 @@ button { font-family: inherit; cursor: pointer; }
 .login-logo { font-size: 20px; font-weight: 700; color: #0F2644; margin-bottom: 2px; }
 .login-sub { font-size: 13px; color: #6B7280; margin-bottom: 24px; }
 .login-error { background: #FEF2F2; border: 1px solid #FECACA; color: #991B1B; font-size: 12px; padding: 9px 12px; border-radius: 8px; margin-bottom: 14px; }
+.loading-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #F4F6F8; color: #6B7280; }
