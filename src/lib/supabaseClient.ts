@@ -2,9 +2,9 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+// Fall back to placeholder values at build time so createClient doesn't throw.
+// The real values come from Vercel env vars at runtime.
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
+const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key";
 
-// Safe to call with empty strings at build time — actual requests will
-// fail gracefully at runtime if the env vars are missing in production.
 export const supabase = createClient(url, key);
