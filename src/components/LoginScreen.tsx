@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "NOT SET";
+
 export function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -83,6 +85,9 @@ export function LoginScreen() {
           }}
         >
           Your team uses one shared login to access all properties and documents.
+        </p>
+        <p style={{ fontSize: "10px", color: "#9CA3AF", marginTop: "8px", textAlign: "center", wordBreak: "break-all" }}>
+          db: {supabaseUrl.slice(0, 40)}
         </p>
       </div>
     </div>
