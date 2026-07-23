@@ -25,10 +25,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [authLoaded, setAuthLoaded] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setAuthLoaded(true);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setSession(session);
+        setAuthLoaded(true);
+      })
+      .catch(() => {
+        // Supabase unreachable — still show the login screen
+        setAuthLoaded(true);
+      });
 
     const {
       data: { subscription },
